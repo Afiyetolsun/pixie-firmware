@@ -25,12 +25,24 @@ fi
 # Override with IDF_IMAGE if you know better.
 IDF_IMAGE="${IDF_IMAGE:-espressif/idf:v5.5.4}"
 
+# Switching IDF major.minor versions reuses incompatible cmake cache
+# (different python_env path). Wipe build/ when the image changes.
+if [ -d build ] && [ -f build/.idf-image ]; then
+  cached=$(cat build/.idf-image)
+  if [ "$cached" != "$IDF_IMAGE" ]; then
+    echo "==> IDF image changed ($cached -> $IDF_IMAGE); cleaning build/"
+    rm -rf build
+  fi
+fi
+
 echo "==> Building Pixie firmware ($IDF_IMAGE)"
 docker run --rm \
   -v "$PWD":/project \
   -w /project \
   -e HOME=/tmp \
   "$IDF_IMAGE" idf.py build
+
+mkdir -p build && echo "$IDF_IMAGE" > build/.idf-image
 
 echo
 echo "==> Build complete"
