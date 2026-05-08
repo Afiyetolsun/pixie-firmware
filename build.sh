@@ -53,6 +53,23 @@ if [ -f "$hollows_c" ] && grep -q '^[[:space:]]*\.version = version$' "$hollows_
     "$hollows_c" && rm -f "$hollows_c.bak"
 fi
 
+# IDF v5.5's NimBLE asserts that ble_hs_id_copy_addr is called with the
+# host lock held; the pinned hollows code calls it bare from onSync, so
+# the device panic-reboots right after BLE init. Wrap with lock/unlock.
+if [ -f "$hollows_ble" ] && \
+   grep -q '^    rc = ble_hs_id_copy_addr(conn.own_addr_type, conn.address, NULL);$' "$hollows_ble"; then
+  echo "==> patching $hollows_ble (wrap ble_hs_id_copy_addr with host lock)"
+  awk '
+    /^    rc = ble_hs_id_copy_addr\(conn\.own_addr_type, conn\.address, NULL\);$/ {
+      print "    ble_hs_lock();"
+      print $0
+      print "    ble_hs_unlock();"
+      next
+    }
+    { print }
+  ' "$hollows_ble" > "$hollows_ble.tmp" && mv "$hollows_ble.tmp" "$hollows_ble"
+fi
+
 # Pin the IDF image - `espressif/idf:latest` (6.x) fails to bootstrap
 # on this project. v5.5.x is the most recent line known to build cleanly.
 # Override with IDF_IMAGE if you know better.
