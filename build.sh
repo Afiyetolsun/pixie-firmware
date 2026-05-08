@@ -20,10 +20,10 @@ if [ ! -f components/firefly-hollows/include/firefly-hollows.h ]; then
   git submodule update --init --recursive
 fi
 
-# Pin the IDF image - the project's sdkconfig was generated against
-# ESP-IDF 5.4.1 (see commit 547c1e1) and `espressif/idf:latest` (6.x)
-# fails to bootstrap on it. Override with IDF_IMAGE if you know better.
-IDF_IMAGE="${IDF_IMAGE:-espressif/idf:v5.4.1}"
+# Pin the IDF image - `espressif/idf:latest` (6.x) fails to bootstrap
+# on this project. v5.5.x is the most recent line known to build cleanly.
+# Override with IDF_IMAGE if you know better.
+IDF_IMAGE="${IDF_IMAGE:-espressif/idf:v5.5.4}"
 
 echo "==> Building Pixie firmware ($IDF_IMAGE)"
 docker run --rm \
