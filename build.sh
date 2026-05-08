@@ -20,12 +20,17 @@ if [ ! -f components/firefly-hollows/include/firefly-hollows.h ]; then
   git submodule update --init --recursive
 fi
 
-echo "==> Building Pixie firmware (espressif/idf)"
+# Pin the IDF image - the project's sdkconfig was generated against
+# ESP-IDF 5.4.1 (see commit 547c1e1) and `espressif/idf:latest` (6.x)
+# fails to bootstrap on it. Override with IDF_IMAGE if you know better.
+IDF_IMAGE="${IDF_IMAGE:-espressif/idf:v5.4.1}"
+
+echo "==> Building Pixie firmware ($IDF_IMAGE)"
 docker run --rm \
   -v "$PWD":/project \
   -w /project \
   -e HOME=/tmp \
-  espressif/idf idf.py build
+  "$IDF_IMAGE" idf.py build
 
 echo
 echo "==> Build complete"
