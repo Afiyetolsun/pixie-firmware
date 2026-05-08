@@ -53,22 +53,30 @@ if [ -f "$hollows_c" ] && grep -q '^[[:space:]]*\.version = version$' "$hollows_
     "$hollows_c" && rm -f "$hollows_c.bak"
 fi
 
-# IDF v5.5's NimBLE asserts that ble_hs_id_copy_addr is called with the
-# host lock held; the pinned hollows code calls it bare from onSync, so
-# the device panic-reboots right after BLE init. Wrap with lock/unlock.
-# ble_hs_lock/unlock exist in the lib but aren't in the public ble_hs.h
-# of this NimBLE version, so forward-declare them inline.
+# IDF v5.5's NimBLE asserts that the host lock is held when calling the
+# id helpers (ble_hs_id_addr, called internally by both ble_hs_id_infer_auto
+# and ble_hs_id_copy_addr). Pinned hollows code calls both bare from
+# onSync, so the device panic-reboots right after BLE init. Wrap the
+# whole sequence in one lock/unlock pair. ble_hs_lock/unlock exist in
+# the NimBLE lib but aren't in the public include path, so forward-declare.
 if [ -f "$hollows_ble" ] && \
    ! grep -q 'extern void ble_hs_lock' "$hollows_ble" && \
-   grep -q '^    rc = ble_hs_id_copy_addr(conn.own_addr_type, conn.address, NULL);$' "$hollows_ble"; then
-  echo "==> patching $hollows_ble (wrap ble_hs_id_copy_addr with host lock)"
+   grep -q '^    rc = ble_hs_id_infer_auto(0, &conn.own_addr_type);$' "$hollows_ble"; then
+  echo "==> patching $hollows_ble (wrap onSync ble_hs_id_* calls with lock)"
   awk '
-    /^    rc = ble_hs_id_copy_addr\(conn\.own_addr_type, conn\.address, NULL\);$/ {
+    /^    rc = ble_hs_id_infer_auto\(0, &conn\.own_addr_type\);$/ {
       print "    extern void ble_hs_lock(void);"
       print "    extern void ble_hs_unlock(void);"
       print "    ble_hs_lock();"
       print $0
+      in_block = 1
+      next
+    }
+    in_block && /^    print_addr/ {
       print "    ble_hs_unlock();"
+      print ""
+      print $0
+      in_block = 0
       next
     }
     { print }
