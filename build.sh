@@ -56,11 +56,16 @@ fi
 # IDF v5.5's NimBLE asserts that ble_hs_id_copy_addr is called with the
 # host lock held; the pinned hollows code calls it bare from onSync, so
 # the device panic-reboots right after BLE init. Wrap with lock/unlock.
+# ble_hs_lock/unlock exist in the lib but aren't in the public ble_hs.h
+# of this NimBLE version, so forward-declare them inline.
 if [ -f "$hollows_ble" ] && \
+   ! grep -q 'extern void ble_hs_lock' "$hollows_ble" && \
    grep -q '^    rc = ble_hs_id_copy_addr(conn.own_addr_type, conn.address, NULL);$' "$hollows_ble"; then
   echo "==> patching $hollows_ble (wrap ble_hs_id_copy_addr with host lock)"
   awk '
     /^    rc = ble_hs_id_copy_addr\(conn\.own_addr_type, conn\.address, NULL\);$/ {
+      print "    extern void ble_hs_lock(void);"
+      print "    extern void ble_hs_unlock(void);"
       print "    ble_hs_lock();"
       print $0
       print "    ble_hs_unlock();"
