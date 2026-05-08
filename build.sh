@@ -53,30 +53,26 @@ if [ -f "$hollows_c" ] && grep -q '^[[:space:]]*\.version = version$' "$hollows_
     "$hollows_c" && rm -f "$hollows_c.bak"
 fi
 
-# IDF v5.5's NimBLE asserts that the host lock is held when calling the
-# id helpers (ble_hs_id_addr, called internally by both ble_hs_id_infer_auto
-# and ble_hs_id_copy_addr). Pinned hollows code calls both bare from
-# onSync, so the device panic-reboots right after BLE init. Wrap the
-# whole sequence in one lock/unlock pair. ble_hs_lock/unlock exist in
-# the NimBLE lib but aren't in the public include path, so forward-declare.
+# IDF v5.5's NimBLE has an internally-inconsistent BLE_HS_DEBUG config:
+# the BLE_HS_DBG_ASSERT macro is active and asserts ble_hs_locked_by_cur_task,
+# but the lock-bookkeeping in ble_hs_lock_nested that would set the owning
+# task handle never runs in this code path, so the assert always fails
+# right after the BLE host task starts. The cyberdeck demos don't need
+# BLE; bypass the host init by exiting taskBleFunc right after it signals
+# ready. Wallet panel won't work, but it's broken on this commit anyway.
 if [ -f "$hollows_ble" ] && \
-   ! grep -q 'extern void ble_hs_lock' "$hollows_ble" && \
-   grep -q '^    rc = ble_hs_id_infer_auto(0, &conn.own_addr_type);$' "$hollows_ble"; then
-  echo "==> patching $hollows_ble (wrap onSync ble_hs_id_* calls with lock)"
+   ! grep -q 'PIXIE-PATCH: skip-ble-init' "$hollows_ble" && \
+   grep -q '^    xSemaphoreGive(init->ready);$' "$hollows_ble"; then
+  echo "==> patching $hollows_ble (skip BLE host init for demo build)"
   awk '
-    /^    rc = ble_hs_id_infer_auto\(0, &conn\.own_addr_type\);$/ {
-      print "    extern void ble_hs_lock(void);"
-      print "    extern void ble_hs_unlock(void);"
-      print "    ble_hs_lock();"
+    /^    xSemaphoreGive\(init->ready\);$/ && !patched {
       print $0
-      in_block = 1
-      next
-    }
-    in_block && /^    print_addr/ {
-      print "    ble_hs_unlock();"
       print ""
-      print $0
-      in_block = 0
+      print "    // PIXIE-PATCH: skip-ble-init - bypass NimBLE host init,"
+      print "    // which trips an internally-inconsistent BLE_HS_DEBUG"
+      print "    // assert in ble_hs_id_addr on IDF v5.5."
+      print "    vTaskDelete(NULL);"
+      patched = 1
       next
     }
     { print }
