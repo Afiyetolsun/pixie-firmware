@@ -77,19 +77,27 @@ echo "==> Flash complete"
 if [ "$MONITOR" = "1" ]; then
   if command -v idf.py >/dev/null 2>&1; then
     exec idf.py -p "$PORT" monitor
-  elif command -v docker >/dev/null 2>&1 && docker info >/dev/null 2>&1; then
-    # idf.py monitor inside docker - symbolicates panic addresses by
-    # reading build/pixie.elf, which is much more useful than raw screen.
+  elif python3 -c 'import esp_idf_monitor' >/dev/null 2>&1; then
+    # Standalone monitor (pip install esp-idf-monitor). Reads pixie.elf
+    # and resolves panic PCs to source locations - same UX as idf.py
+    # monitor, no ESP-IDF or Docker needed.
+    exec python3 -m esp_idf_monitor -p "$PORT" build/pixie.elf
+  elif [ "$(uname -s)" = "Linux" ] && command -v docker >/dev/null 2>&1 \
+       && docker info >/dev/null 2>&1; then
+    # Docker --device passthrough only works on Linux; on macOS Docker
+    # Desktop runs in a VM and host /dev/tty paths aren't visible.
     IDF_IMAGE="${IDF_IMAGE:-espressif/idf:v5.5.4}"
     exec docker run --rm -it \
       -v "$PWD":/project -w /project -e HOME=/tmp \
       --device "$PORT" \
       "$IDF_IMAGE" idf.py -p "$PORT" monitor
   elif command -v screen >/dev/null 2>&1; then
-    echo "note: 'screen' won't symbolicate panic addresses; install esptool/idf for that" >&2
+    echo "note: 'screen' won't symbolicate panic addresses; install" >&2
+    echo "      esp-idf-monitor for that:  pip install esp-idf-monitor" >&2
     exec screen "$PORT" 115200
   else
-    echo "warning: no monitor tool available (idf.py, docker, or screen)" >&2
+    echo "warning: no monitor tool available" >&2
+    echo "  install one:  pip install esp-idf-monitor" >&2
   fi
 else
   echo "Monitor with: ./flash.sh --monitor   (or)  screen $PORT 115200"
