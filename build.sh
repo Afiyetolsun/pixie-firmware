@@ -43,6 +43,16 @@ if [ -f "$hollows_ble" ] && ! grep -q '^#include "hollows.h"' "$hollows_ble"; th
   ' "$hollows_ble" > "$hollows_ble.tmp" && mv "$hollows_ble.tmp" "$hollows_ble"
 fi
 
+# Same root cause - hollows.c:132 has a malformed initializer; the
+# `.version = version` line is missing a trailing comma, so the next
+# `.ready` field is parsed as a member access on `version`.
+hollows_c="components/firefly-hollows/src/hollows.c"
+if [ -f "$hollows_c" ] && grep -q '^[[:space:]]*\.version = version$' "$hollows_c"; then
+  echo "==> patching $hollows_c (add missing comma in TaskBleInit init)"
+  sed -i.bak 's/^\([[:space:]]*\)\.version = version$/\1.version = version,/' \
+    "$hollows_c" && rm -f "$hollows_c.bak"
+fi
+
 # Pin the IDF image - `espressif/idf:latest` (6.x) fails to bootstrap
 # on this project. v5.5.x is the most recent line known to build cleanly.
 # Override with IDF_IMAGE if you know better.
