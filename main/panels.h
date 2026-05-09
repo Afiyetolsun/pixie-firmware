@@ -64,6 +64,9 @@ int pushPanelBytes();
 // See: panel-stats.c
 int pushPanelStats();
 
+// See: panel-leds.c
+int pushPanelLeds();
+
 
 ///////////////////////////////
 // Game Panels

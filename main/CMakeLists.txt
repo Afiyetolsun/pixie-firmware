@@ -7,6 +7,7 @@ idf_component_register(
     "panel-crawl.c"
     "panel-cyber.c"
     "panel-gifs.c"
+    "panel-leds.c"
     "panel-life.c"
     "panel-menu.c"
     "panel-raycast.c"
