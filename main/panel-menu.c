@@ -9,7 +9,7 @@
 #include "images/image-arrow.h"
 
 
-#define ITEM_COUNT      (7)
+#define ITEM_COUNT      (11)
 #define VISIBLE_ROWS    (3)
 #define ROW_HEIGHT      (40)
 #define ROW_FIRST_Y     (63)
@@ -35,18 +35,26 @@ static const char *menuItems[ITEM_COUNT] = {
     "Life Grid",
     "Byte Stream",
     "Sys Stats",
+    "Raycast",
+    "Asteroids",
+    "Breakout",
+    "Dungeon",
 };
 
 
 static void launchItem(int idx) {
     switch (idx) {
-        case 0: pushPanelConnect(); break;
-        case 1: pushPanelGifs();    break;
-        case 2: pushPanelSpace();   break;
-        case 3: pushPanelCyber();   break;
-        case 4: pushPanelLife();    break;
-        case 5: pushPanelBytes();   break;
-        case 6: pushPanelStats();   break;
+        case 0:  pushPanelConnect(); break;
+        case 1:  pushPanelGifs();    break;
+        case 2:  pushPanelSpace();   break;
+        case 3:  pushPanelCyber();   break;
+        case 4:  pushPanelLife();    break;
+        case 5:  pushPanelBytes();   break;
+        case 6:  pushPanelStats();   break;
+        case 7:  pushPanelRaycast(); break;
+        case 8:  pushPanelRoids();   break;
+        case 9:  pushPanelBrick();   break;
+        case 10: pushPanelCrawl();   break;
     }
 }
 

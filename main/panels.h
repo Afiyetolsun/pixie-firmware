@@ -66,6 +66,22 @@ int pushPanelStats();
 
 
 ///////////////////////////////
+// Game Panels
+
+// See: panel-raycast.c
+int pushPanelRaycast();
+
+// See: panel-roids.c
+int pushPanelRoids();
+
+// See: panel-brick.c
+int pushPanelBrick();
+
+// See: panel-crawl.c
+int pushPanelCrawl();
+
+
+///////////////////////////////
 // Wallet Panels
 
 // See: panel-connect.c
