@@ -22,13 +22,17 @@
 // firefly-hollows' pixels API lives in src/ (private to the
 // component). Forward-declare what we need; the linker resolves to
 // the same symbols task-io.c uses.
+//
+// Note: the public-looking pixels_animate (all-pixels) and
+// pixels_stopAnimation are declared in pixels.h but not actually
+// implemented in pixels.c at this commit, so we use the per-pixel
+// pixels_animatePixel instead and pass the pixel index via `arg`.
 typedef void* PixelsContext;
 typedef void (*PixelAnimationFunc)(color_ffxt *output, size_t count,
   fixed_ffxt t, void *arg);
 extern PixelsContext pixels;
-extern void pixels_animate(PixelsContext context, PixelAnimationFunc fn,
-  uint32_t duration, uint32_t repeat, void *arg);
-extern void pixels_stopAnimation(PixelsContext context, uint32_t final);
+extern void pixels_animatePixel(PixelsContext context, uint32_t pixel,
+  PixelAnimationFunc fn, uint32_t duration, uint32_t repeat, void *arg);
 
 
 typedef struct LedsState {
@@ -61,22 +65,24 @@ static const uint32_t modeDurations[MODE_COUNT] = {
 };
 
 
+// Each animation writes only out[0] - pixels_animatePixel binds one
+// LED at a time, and the pixel index travels through `arg`.
+
+static int pixIndex(void *arg) { return (int)(uintptr_t)arg; }
+
 static void animOff(color_ffxt *out, size_t count, fixed_ffxt t, void *arg) {
-    for (size_t i = 0; i < count; i++) { out[i] = COLOR_BLACK; }
+    out[0] = COLOR_BLACK;
 }
 
 static void animCyan(color_ffxt *out, size_t count, fixed_ffxt t, void *arg) {
-    color_ffxt c = ffx_color_rgb(0, 220, 240);
-    for (size_t i = 0; i < count; i++) { out[i] = c; }
+    out[0] = ffx_color_rgb(0, 220, 240);
 }
 
 static void animRainbow(color_ffxt *out, size_t count, fixed_ffxt t,
   void *arg) {
     int32_t base = scalarfx(3960, t);
-    for (size_t i = 0; i < count; i++) {
-        int32_t hue = (base + (int32_t)i * 990) % 3960;
-        out[i] = ffx_color_hsv(hue, MAX_SAT, MAX_VAL);
-    }
+    int32_t hue = (base + pixIndex(arg) * 990) % 3960;
+    out[0] = ffx_color_hsv(hue, MAX_SAT, MAX_VAL);
 }
 
 static void animPulse(color_ffxt *out, size_t count, fixed_ffxt t, void *arg) {
@@ -84,40 +90,32 @@ static void animPulse(color_ffxt *out, size_t count, fixed_ffxt t, void *arg) {
     fixed_ffxt half = FM_1 / 2;
     if (t < half) { v = scalarfx(MAX_VAL, mulfx(t, tofx(2))); }
     else          { v = scalarfx(MAX_VAL, mulfx(FM_1 - t, tofx(2))); }
-    color_ffxt c = ffx_color_hsv(275, MAX_SAT, v);
-    for (size_t i = 0; i < count; i++) { out[i] = c; }
+    out[0] = ffx_color_hsv(275, MAX_SAT, v);
 }
 
 static void animStrobe(color_ffxt *out, size_t count, fixed_ffxt t,
   void *arg) {
     bool on = t < (FM_1 / 4);
-    color_ffxt c = on ? ffx_color_rgb(255, 255, 255) : COLOR_BLACK;
-    for (size_t i = 0; i < count; i++) { out[i] = c; }
+    out[0] = on ? ffx_color_rgb(255, 255, 255) : COLOR_BLACK;
 }
 
 static void animPolice(color_ffxt *out, size_t count, fixed_ffxt t,
   void *arg) {
     bool phase = t < (FM_1 / 2);
-    color_ffxt red  = ffx_color_rgb(255, 0, 0);
-    color_ffxt blue = ffx_color_rgb(0, 0, 255);
-    for (size_t i = 0; i < count; i++) {
-        bool side = (i & 1) ^ phase;
-        out[i] = side ? red : blue;
-    }
+    bool side = (pixIndex(arg) & 1) ^ phase;
+    out[0] = side ? ffx_color_rgb(255, 0, 0) : ffx_color_rgb(0, 0, 255);
 }
 
 static void animMatrix(color_ffxt *out, size_t count, fixed_ffxt t,
   void *arg) {
-    int32_t head = scalarfx((int32_t)(count * 2), t);
-    for (size_t i = 0; i < count; i++) {
-        int32_t dist = (head - (int32_t)i + (int32_t)(count * 2))
-          % (int32_t)(count * 2);
-        int32_t v = (dist < (int32_t)count)
-          ? (MAX_VAL - dist * (MAX_VAL / (int32_t)count))
-          : 0;
-        if (v < 0) { v = 0; }
-        out[i] = ffx_color_hsv(180, MAX_SAT, v);
-    }
+    int i = pixIndex(arg);
+    int32_t head = scalarfx(LED_COUNT * 2, t);
+    int32_t dist = (head - i + LED_COUNT * 2) % (LED_COUNT * 2);
+    int32_t v = (dist < LED_COUNT)
+      ? (MAX_VAL - dist * (MAX_VAL / LED_COUNT))
+      : 0;
+    if (v < 0) { v = 0; }
+    out[0] = ffx_color_hsv(180, MAX_SAT, v);
 }
 
 static const PixelAnimationFunc modeFuncs[MODE_COUNT] = {
@@ -127,9 +125,11 @@ static const PixelAnimationFunc modeFuncs[MODE_COUNT] = {
 
 
 static void applyMode(LedsState *state) {
-    pixels_stopAnimation(pixels, 0);
-    pixels_animate(pixels, modeFuncs[state->mode], modeDurations[state->mode],
-      0, NULL);
+    PixelAnimationFunc fn = modeFuncs[state->mode];
+    uint32_t dur = modeDurations[state->mode];
+    for (int i = 0; i < LED_COUNT; i++) {
+        pixels_animatePixel(pixels, i, fn, dur, 0, (void*)(uintptr_t)i);
+    }
 
     ffx_sceneLabel_setText(state->modeLabel, modeNames[state->mode]);
     ffx_sceneLabel_setText(state->descLabel, modeDescs[state->mode]);
