@@ -83,6 +83,9 @@ int pushPanelBrick();
 // See: panel-crawl.c
 int pushPanelCrawl();
 
+// See: panel-snake.c
+int pushPanelSnake();
+
 
 ///////////////////////////////
 // Wallet Panels

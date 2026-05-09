@@ -1,6 +1,5 @@
-// Asteroids - side-scroll dodger/shooter using the Le Space sprite set.
-// Same orientation as panel-space.c (ship on right firing left, threats
-// approach from the left) so the directional sprites face the right way.
+// Asteroids - vertical / portrait layout. Ship at the bottom, rocks
+// fall from the top, bullets fire up. Uses the Le Space sprite set.
 
 #include <stdbool.h>
 #include <stdint.h>
@@ -12,22 +11,23 @@
 
 #include "panels.h"
 #include "utils.h"
-
-
 #include "image-data.h"
 
 
 #define MAX_ROCKS       (10)
 #define MAX_BULLETS     (6)
 
-#define SHIP_X          (240 - 36)
 #define SHIP_W          (36)
 #define SHIP_H          (38)
+#define SHIP_Y          (240 - SHIP_H - 2)
+
 #define ROCK_W          (22)
 #define ROCK_H          (26)
-#define BULLET_W        (8)
-#define BULLET_H        (4)
+#define BULLET_W        (10)
+#define BULLET_H        (8)
 #define BULLET_SPEED    (5)
+
+#define HUD_H           (16)
 
 
 typedef struct Rock {
@@ -48,7 +48,7 @@ typedef struct RoidsState {
     FfxNode bigLabel;
     FfxNode subLabel;
 
-    int16_t shipY;
+    int16_t shipX;
     Rock rocks_state[MAX_ROCKS];
     int16_t bulletX[MAX_BULLETS];
     int16_t bulletY[MAX_BULLETS];
@@ -58,6 +58,7 @@ typedef struct RoidsState {
     uint32_t score;
     uint32_t spawnAt;
     uint32_t fireCooldown;
+    uint32_t okHeldAt;
     uint32_t rng;
     bool gameOver;
 } RoidsState;
@@ -88,11 +89,11 @@ static void spawnRock(RoidsState *state) {
     for (int i = 0; i < MAX_ROCKS; i++) {
         if (state->rocks_state[i].alive) { continue; }
         Rock *r = &state->rocks_state[i];
-        // Spawn off the LEFT edge, drifting right toward the ship.
-        r->x = -ROCK_W;
-        r->y = (int16_t)(rngNext(&state->rng) % (240 - ROCK_H));
-        r->vx = 2 + (int8_t)(rngNext(&state->rng) % 3);
-        r->vy = (int8_t)((rngNext(&state->rng) % 3) - 1);
+        // Spawn off the TOP edge, drifting down toward the ship.
+        r->y = -ROCK_H;
+        r->x = (int16_t)(rngNext(&state->rng) % (240 - ROCK_W));
+        r->vy = 2 + (int8_t)(rngNext(&state->rng) % 3);
+        r->vx = (int8_t)((rngNext(&state->rng) % 3) - 1);
         r->alive = 1;
         ffx_sceneNode_setHidden(state->rocks[i], false);
         ffx_sceneNode_setPosition(state->rocks[i], ffx_point(r->x, r->y));
@@ -104,9 +105,9 @@ static void fireBullet(RoidsState *state) {
     for (int i = 0; i < MAX_BULLETS; i++) {
         if (state->bulletAlive[i]) { continue; }
         state->bulletAlive[i] = true;
-        // Bullet starts at the LEFT side of the ship and moves left.
-        state->bulletX[i] = SHIP_X - BULLET_W - 2;
-        state->bulletY[i] = state->shipY + SHIP_H / 2 - BULLET_H / 2;
+        // Bullet starts above the ship and travels up.
+        state->bulletX[i] = state->shipX + SHIP_W / 2 - BULLET_W / 2;
+        state->bulletY[i] = SHIP_Y - BULLET_H - 2;
         ffx_sceneNode_setHidden(state->bullets[i], false);
         ffx_sceneNode_setPosition(state->bullets[i],
           ffx_point(state->bulletX[i], state->bulletY[i]));
@@ -115,7 +116,7 @@ static void fireBullet(RoidsState *state) {
 }
 
 static void resetGame(RoidsState *state) {
-    state->shipY = 120 - SHIP_H / 2;
+    state->shipX = 120 - SHIP_W / 2;
     state->score = 0;
     state->gameOver = false;
     state->spawnAt = ticks() + 500;
@@ -129,17 +130,19 @@ static void resetGame(RoidsState *state) {
         ffx_sceneNode_setHidden(state->bullets[i], true);
     }
     hideOverlay(state);
-    ffx_sceneNode_setPosition(state->ship, ffx_point(SHIP_X, state->shipY));
+    ffx_sceneNode_setPosition(state->ship, ffx_point(state->shipX, SHIP_Y));
 }
 
 static void onKeys(FfxEvent event, FfxEventProps props, void *_state) {
     RoidsState *state = _state;
     state->keys = props.keys.down;
+
+    state->okHeldAt = (props.keys.down == FfxKeyOk) ? ticks() : 0;
+
     if (props.keys.down & FfxKeyCancel) {
         if (state->gameOver) {
             ffx_popPanel(0);
         } else {
-            // Cancel = fire (matches Le Space convention).
             uint32_t t = ticks();
             if (t > state->fireCooldown) {
                 fireBullet(state);
@@ -155,16 +158,24 @@ static void onKeys(FfxEvent event, FfxEventProps props, void *_state) {
 
 static void onRender(FfxEvent event, FfxEventProps props, void *_state) {
     RoidsState *state = _state;
+
+    if (!state->gameOver && state->keys == FfxKeyOk &&
+        state->okHeldAt && ticks() - state->okHeldAt > 3000) {
+        ffx_popPanel(0);
+        return;
+    }
+
     if (state->gameOver) { return; }
 
     uint32_t t = ticks();
     state->score++;
 
-    if (state->keys & FfxKeyNorth) { state->shipY -= 3; }
-    if (state->keys & FfxKeySouth) { state->shipY += 3; }
-    if (state->shipY < 0)               { state->shipY = 0; }
-    if (state->shipY > 240 - SHIP_H)    { state->shipY = 240 - SHIP_H; }
-    ffx_sceneNode_setPosition(state->ship, ffx_point(SHIP_X, state->shipY));
+    // Ship moves horizontally.
+    if (state->keys & FfxKeyNorth) { state->shipX -= 3; }
+    if (state->keys & FfxKeySouth) { state->shipX += 3; }
+    if (state->shipX < 0)              { state->shipX = 0; }
+    if (state->shipX > 240 - SHIP_W)   { state->shipX = 240 - SHIP_W; }
+    ffx_sceneNode_setPosition(state->ship, ffx_point(state->shipX, SHIP_Y));
 
     if (t > state->spawnAt) {
         spawnRock(state);
@@ -173,11 +184,11 @@ static void onRender(FfxEvent event, FfxEventProps props, void *_state) {
         state->spawnAt = t + gap;
     }
 
-    // Bullets travel LEFT.
+    // Bullets travel UP.
     for (int i = 0; i < MAX_BULLETS; i++) {
         if (!state->bulletAlive[i]) { continue; }
-        state->bulletX[i] -= BULLET_SPEED;
-        if (state->bulletX[i] + BULLET_W < 0) {
+        state->bulletY[i] -= BULLET_SPEED;
+        if (state->bulletY[i] + BULLET_H < HUD_H) {
             state->bulletAlive[i] = false;
             ffx_sceneNode_setHidden(state->bullets[i], true);
             continue;
@@ -186,19 +197,19 @@ static void onRender(FfxEvent event, FfxEventProps props, void *_state) {
           ffx_point(state->bulletX[i], state->bulletY[i]));
     }
 
-    int16_t shipL = SHIP_X;
-    int16_t shipR = SHIP_X + SHIP_W;
-    int16_t shipT = state->shipY;
-    int16_t shipB = state->shipY + SHIP_H;
+    int16_t shipL = state->shipX;
+    int16_t shipR = state->shipX + SHIP_W;
+    int16_t shipT = SHIP_Y;
+    int16_t shipB = SHIP_Y + SHIP_H;
 
     for (int i = 0; i < MAX_ROCKS; i++) {
         Rock *r = &state->rocks_state[i];
         if (!r->alive) { continue; }
         r->x += r->vx;
         r->y += r->vy;
-        if (r->y < 0)                  { r->y = 0; r->vy = -r->vy; }
-        if (r->y > 240 - ROCK_H)       { r->y = 240 - ROCK_H; r->vy = -r->vy; }
-        if (r->x > 240) {
+        if (r->x < 0)               { r->x = 0; r->vx = -r->vx; }
+        if (r->x > 240 - ROCK_W)    { r->x = 240 - ROCK_W; r->vx = -r->vx; }
+        if (r->y > 240) {
             r->alive = 0;
             ffx_sceneNode_setHidden(state->rocks[i], true);
             continue;
@@ -260,7 +271,7 @@ static int initFunc(FfxScene scene, FfxNode panel, void *_state, void *arg) {
     state->ship = ffx_scene_createImage(scene, image_ship, image_ship_len);
     ffx_sceneGroup_appendChild(panel, state->ship);
 
-    state->hud = ffx_scene_createBox(scene, ffx_size(240, 16));
+    state->hud = ffx_scene_createBox(scene, ffx_size(240, HUD_H));
     ffx_sceneBox_setColor(state->hud, RGBA_DARKER75);
     ffx_sceneGroup_appendChild(panel, state->hud);
     ffx_sceneNode_setPosition(state->hud, ffx_point(0, 0));

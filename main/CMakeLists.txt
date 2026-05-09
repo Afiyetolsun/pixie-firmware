@@ -13,6 +13,7 @@ idf_component_register(
     "panel-menu.c"
     "panel-raycast.c"
     "panel-roids.c"
+    "panel-snake.c"
     "panel-space.c"
     "panel-stats.c"
     "panel-tx.c"

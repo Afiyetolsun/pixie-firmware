@@ -9,7 +9,7 @@
 #include "image-data.h"
 
 
-#define ITEM_COUNT      (12)
+#define ITEM_COUNT      (13)
 #define VISIBLE_ROWS    (3)
 #define ROW_HEIGHT      (40)
 #define ROW_FIRST_Y     (63)
@@ -40,6 +40,7 @@ static const char *menuItems[ITEM_COUNT] = {
     "Asteroids",
     "Breakout",
     "Dungeon",
+    "Snake",
 };
 
 
@@ -57,6 +58,7 @@ static void launchItem(int idx) {
         case 9:  pushPanelRoids();   break;
         case 10: pushPanelBrick();   break;
         case 11: pushPanelCrawl();   break;
+        case 12: pushPanelSnake();   break;
     }
 }
 

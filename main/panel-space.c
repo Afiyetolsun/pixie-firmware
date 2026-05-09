@@ -1,6 +1,7 @@
-// Le Space - Space Invaders with progressive levels.
-// Original mechanics by Richard Moore; multi-level state machine and
-// scoring layered on top.
+// Le Space - Space Invaders, vertical / portrait layout.
+// Ship at the bottom, aliens descend from the top, bullets fire up.
+// Five progressive levels with increasing alien grid and decreasing
+// bullet capacity.
 
 #include <stdbool.h>
 #include <stdio.h>
@@ -12,35 +13,44 @@
 
 #include "panels.h"
 #include "utils.h"
-
-
 #include "image-data.h"
 
 
-#define MAX_ROWS        (6)
-#define MAX_COLS        (5)
-#define MAX_ALIENS      (MAX_ROWS * MAX_COLS)
+#define MAX_COLS        (6)
+#define MAX_ROWS        (5)
+#define MAX_ALIENS      (MAX_COLS * MAX_ROWS)
 #define MAX_BULLETS     (5)
 #define MAX_LEVEL       (5)
+
+#define ALIEN_W         (22)
+#define ALIEN_H         (26)
+#define ALIEN_STEP_X    (30)
+#define ALIEN_STEP_Y    (40)
+
+#define SHIP_W          (36)
+#define SHIP_H          (38)
+#define SHIP_BOTTOM_Y   (240 - SHIP_H - 2)
+
+#define HUD_H           (16)
 
 #define SPLASH_MS       (1500)
 #define END_HOLD_MS     (1500)
 
 
 typedef struct LevelConfig {
-    int rows;
-    int cols;
+    int cols;            // alien columns (horizontal)
+    int rows;            // alien rows (vertical)
     int bulletCap;
     int alienAnimMod;
-    int stepDivisor;     // 1 = full speed; higher = slower
+    int stepDivisor;
 } LevelConfig;
 
 static const LevelConfig levels[MAX_LEVEL] = {
-    { 4, 3, 5, 6, 2 },  // L1: easy intro
-    { 4, 4, 5, 4, 1 },  // L2: original feel
-    { 5, 4, 5, 4, 1 },  // L3
-    { 5, 5, 4, 3, 1 },  // L4
-    { 6, 5, 4, 2, 1 },  // L5: BOSS - max aliens, fastest, fewer bullets
+    { 4, 3, 5, 6, 2 },   // L1
+    { 4, 4, 5, 4, 1 },   // L2 (original)
+    { 5, 4, 5, 4, 1 },   // L3
+    { 5, 5, 4, 3, 1 },   // L4
+    { 6, 5, 4, 2, 1 },   // L5 BOSS
 };
 
 
@@ -58,7 +68,7 @@ typedef struct SpaceState {
     uint32_t stateEnteredAt;
 
     int level;
-    int rows, cols;
+    int cols, rows;
     int bulletCap;
     int alienAnimMod;
     int stepDivisor;
@@ -87,7 +97,7 @@ typedef struct SpaceState {
 } SpaceState;
 
 
-static int alienIdx(SpaceState *s, int r, int c) {
+static int alienIdx(SpaceState *s, int c, int r) {
     return r * s->cols + c;
 }
 
@@ -115,10 +125,11 @@ static void showOverlay(SpaceState *s, const char *big, const char *sub) {
 
 static void resetShipAndBullets(SpaceState *s) {
     ffx_sceneNode_stopAnimations(s->ship, false);
-    ffx_sceneNode_setPosition(s->ship, ffx_point(240 - 36, 120 - 19));
+    ffx_sceneNode_setPosition(s->ship,
+      ffx_point(120 - SHIP_W / 2, SHIP_BOTTOM_Y));
 
     for (int i = 0; i < MAX_BULLETS; i++) {
-        ffx_sceneNode_setPosition(s->bullet[i], ffx_point(-10, 0));
+        ffx_sceneNode_setPosition(s->bullet[i], ffx_point(0, 280));
         ffx_sceneNode_setPosition(s->boom[i],   ffx_point(300, 0));
         s->boomLife[i] = 0;
     }
@@ -128,29 +139,31 @@ static void setupLevel(SpaceState *s, int level) {
     LevelConfig cfg = levels[level - 1];
 
     s->level = level;
-    s->rows = cfg.rows;
     s->cols = cfg.cols;
+    s->rows = cfg.rows;
     s->bulletCap = cfg.bulletCap;
     s->alienAnimMod = cfg.alienAnimMod;
     s->stepDivisor = cfg.stepDivisor;
 
     memset(s->dead, 0, sizeof(s->dead));
 
-    // Hide every alien node first; only the in-use slots get re-shown.
     for (int i = 0; i < MAX_ALIENS; i++) {
         ffx_sceneNode_setHidden(s->alien[i], true);
         ffx_sceneNode_setPosition(s->alien[i], ffx_point(-300, 0));
     }
 
     ffx_sceneNode_stopAnimations(s->aliens, false);
-    ffx_sceneNode_setPosition(s->aliens, ffx_point(0, 0));
+    int gridW = s->cols * ALIEN_STEP_X;
+    int aliensX = (240 - gridW) / 2 + (ALIEN_STEP_X - ALIEN_W) / 2;
+    ffx_sceneNode_setPosition(s->aliens, ffx_point(aliensX, HUD_H + 8));
 
     for (int r = 0; r < s->rows; r++) {
         for (int c = 0; c < s->cols; c++) {
-            FfxNode alien = s->alien[alienIdx(s, r, c)];
+            FfxNode alien = s->alien[alienIdx(s, c, r)];
             ffx_sceneNode_setHidden(alien, false);
             ffx_sceneImage_setData(alien, image_alien1, image_alien1_len);
-            ffx_sceneNode_setPosition(alien, ffx_point(30 * r, c * 40));
+            ffx_sceneNode_setPosition(alien,
+              ffx_point(c * ALIEN_STEP_X, r * ALIEN_STEP_Y));
         }
     }
 
@@ -175,7 +188,7 @@ static void explodeShip(SpaceState *s) {
         s->boomLife[i] = 12;
         ffx_sceneNode_setPosition(s->boom[i], ship);
     }
-    ship.x = 300;
+    ship.y = 300;
     ffx_sceneNode_setPosition(s->ship, ship);
 }
 
@@ -195,7 +208,7 @@ static void explodeAlien(SpaceState *s, int index) {
         });
     }
 
-    alien.x = 300;
+    alien.y = 300;
     ffx_sceneNode_setPosition(s->alien[index], alien);
     updateHud(s);
 }
@@ -211,18 +224,20 @@ static void renderPlaying(SpaceState *s) {
         return;
     }
 
+    // Ship moves horizontally.
     if (s->keys & FfxKeyNorth) {
-        if (ship.y > 0) { ship.y -= 2; }
+        if (ship.x > 0) { ship.x -= 3; }
     } else if (s->keys & FfxKeySouth) {
-        if (ship.y < 240 - 38) { ship.y += 2; }
+        if (ship.x < 240 - SHIP_W) { ship.x += 3; }
     }
     ffx_sceneNode_setPosition(s->ship, ship);
 
     s->tick++;
 
+    // Bullets travel UP.
     for (int i = 0; i < MAX_BULLETS; i++) {
         FfxPoint b = ffx_sceneNode_getPosition(s->bullet[i]);
-        if (b.x > -10) { b.x -= 2; }
+        if (b.y < 280) { b.y -= 4; }
         ffx_sceneNode_setPosition(s->bullet[i], b);
 
         if (s->boomLife[i]) {
@@ -234,7 +249,7 @@ static void renderPlaying(SpaceState *s) {
     }
 
     if ((s->tick % s->alienAnimMod) == 0) {
-        int total = s->rows * s->cols;
+        int total = s->cols * s->rows;
         if (total > 0) {
             int toggle = (s->tick / s->alienAnimMod) % total;
             if (!s->dead[toggle]) {
@@ -252,19 +267,24 @@ static void renderPlaying(SpaceState *s) {
     }
 
     bool allKill = true;
-    int total = s->rows * s->cols;
+    int total = s->cols * s->rows;
     for (int i = 0; i < total; i++) {
         if (s->dead[i]) { continue; }
         allKill = false;
 
         FfxPoint a = ffx_sceneNode_getPosition(s->alien[i]);
-        FfxPoint w = { aliens.x + a.x + 10, aliens.y + a.y + 13 };
+        // Alien centre in screen coords.
+        FfxPoint w = {
+            aliens.x + a.x + ALIEN_W / 2,
+            aliens.y + a.y + ALIEN_H / 2
+        };
 
         for (int j = 0; j < MAX_BULLETS; j++) {
             FfxPoint b = ffx_sceneNode_getPosition(s->bullet[j]);
-            if (abs(b.x - w.x) < 10 && abs(b.y - w.y) < 13) {
+            if (abs(b.x + 4 - w.x) < ALIEN_W / 2 &&
+                abs(b.y + 4 - w.y) < ALIEN_H / 2) {
                 explodeAlien(s, i);
-                b.x = -10;
+                b.y = 280;
                 ffx_sceneNode_setPosition(s->bullet[j], b);
                 break;
             }
@@ -274,7 +294,7 @@ static void renderPlaying(SpaceState *s) {
     if (allKill) {
         s->score += 100 * s->level;
         updateHud(s);
-        ffx_sceneNode_animatePosition(s->ship, ffx_point(-200, ship.y),
+        ffx_sceneNode_animatePosition(s->ship, ffx_point(ship.x, 280),
           0, 800, FfxCurveEaseInQuad, NULL, NULL);
         showOverlay(s, "CLEAR!", "");
         enterState(s, StateLevelClear);
@@ -282,16 +302,19 @@ static void renderPlaying(SpaceState *s) {
     }
 
     bool isDead = false;
-    int leftMost = 0, rightMost = 240;
+    int topMost = 240, bottomMost = 0;
     for (int i = 0; i < total; i++) {
         if (s->dead[i]) { continue; }
-
         FfxPoint a = ffx_sceneNode_getPosition(s->alien[i]);
-        if (a.y < rightMost) { rightMost = a.y; }
-        if (a.y + 26 > leftMost) { leftMost = a.y + 26; }
+        if (a.x < topMost) { topMost = a.x; }
+        if (a.x + ALIEN_W > bottomMost) { bottomMost = a.x + ALIEN_W; }
 
-        FfxPoint w = { aliens.x + a.x + 10, aliens.y + a.y + 13 };
-        if (w.x + 7 > ship.x && abs(ship.y + 19 - w.y) < 20) {
+        FfxPoint w = {
+            aliens.x + a.x + ALIEN_W / 2,
+            aliens.y + a.y + ALIEN_H / 2
+        };
+        if (w.y + ALIEN_H / 2 > ship.y &&
+            abs(ship.x + SHIP_W / 2 - w.x) < (SHIP_W + ALIEN_W) / 2 - 4) {
             isDead = true;
             break;
         }
@@ -299,26 +322,25 @@ static void renderPlaying(SpaceState *s) {
 
     if (isDead) {
         explodeShip(s);
-        ffx_sceneNode_animatePosition(s->aliens, ffx_point(480, aliens.y),
-          0, 1000, FfxCurveEaseInBack, NULL, NULL);
+        ffx_sceneNode_animatePosition(s->aliens,
+          ffx_point(aliens.x, 480), 0, 1000, FfxCurveEaseInBack, NULL, NULL);
         showOverlay(s, "GAME OVER", "OK = AGAIN");
         enterState(s, StateGameOver);
         return;
     }
 
-    // Alien field movement: zig-zag. stepDivisor slows movement on easy levels.
     if ((s->tick % s->stepDivisor) == 0) {
-        if ((aliens.x % 8) == 0) {
-            if (leftMost + aliens.y < 240) {
-                aliens.y += 2;
+        if ((aliens.y % 8) == 0) {
+            if (topMost + aliens.x > 0) {
+                aliens.x -= 2;
             } else {
-                aliens.x += 4;
+                aliens.y += 4;
             }
         } else {
-            if (rightMost + aliens.y > 0) {
-                aliens.y -= 2;
+            if (bottomMost + aliens.x < 240) {
+                aliens.x += 2;
             } else {
-                aliens.x += 4;
+                aliens.y += 4;
             }
         }
         ffx_sceneNode_setPosition(s->aliens, aliens);
@@ -355,7 +377,6 @@ static void onRender(FfxEvent event, FfxEventProps props, void *_app) {
 
         case StateGameOver:
         case StateVictory:
-            // Wait for OK / Cancel handled in onKeys.
             break;
     }
 }
@@ -366,10 +387,7 @@ static void onKeys(FfxEvent event, FfxEventProps props, void *_app) {
     s->keys = keys;
 
     if (s->state == StateGameOver || s->state == StateVictory) {
-        if (keys & FfxKeyOk) {
-            startNewGame(s);
-            return;
-        }
+        if (keys & FfxKeyOk) { startNewGame(s); return; }
         if (keys & FfxKeyCancel) {
             ffx_popPanel(s->state == StateVictory
               ? GameResultWin : GameResultLose);
@@ -386,9 +404,9 @@ static void onKeys(FfxEvent event, FfxEventProps props, void *_app) {
         FfxPoint ship = ffx_sceneNode_getPosition(s->ship);
         for (int i = 0; i < s->bulletCap; i++) {
             FfxPoint b = ffx_sceneNode_getPosition(s->bullet[i]);
-            if (b.x > -10) { continue; }     // already in flight
-            b.y = ship.y + 16;
-            b.x = 240 - 32 - 2;
+            if (b.y < 280) { continue; }
+            b.x = ship.x + SHIP_W / 2 - 4;
+            b.y = ship.y - 8;
             ffx_sceneNode_setPosition(s->bullet[i], b);
             break;
         }
@@ -409,7 +427,7 @@ static int initFunc(FfxScene scene, FfxNode panel, void *panelState,
           image_bullet_len);
         s->bullet[i] = bullet;
         ffx_sceneGroup_appendChild(panel, bullet);
-        ffx_sceneNode_setPosition(bullet, ffx_point(-10, 0));
+        ffx_sceneNode_setPosition(bullet, ffx_point(0, 280));
 
         FfxNode boom = ffx_scene_createImage(scene, image_alienboom,
           image_alienboom_len);
@@ -435,7 +453,7 @@ static int initFunc(FfxScene scene, FfxNode panel, void *panelState,
         ffx_sceneNode_setPosition(alien, ffx_point(-300, 0));
     }
 
-    s->hud = ffx_scene_createBox(scene, ffx_size(240, 16));
+    s->hud = ffx_scene_createBox(scene, ffx_size(240, HUD_H));
     ffx_sceneBox_setColor(s->hud, RGBA_DARKER75);
     ffx_sceneGroup_appendChild(panel, s->hud);
     ffx_sceneNode_setPosition(s->hud, ffx_point(0, 0));
