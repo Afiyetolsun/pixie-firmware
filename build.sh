@@ -20,6 +20,17 @@ if [ ! -f components/firefly-hollows/include/firefly-hollows.h ]; then
   git submodule update --init --recursive
 fi
 
+# Display orientation: hollows hard-codes FfxDisplayRotationRibbonRight,
+# which on this rev.6 board produces a horizontally-mirrored output (text
+# reads backwards). Switch to RibbonBottom (operand 0, no MADCTL flips).
+# Idempotent.
+hollows_io="components/firefly-hollows/src/task-io.c"
+if [ -f "$hollows_io" ] && grep -q "FfxDisplayRotationRibbonRight" "$hollows_io"; then
+  echo "==> patching $hollows_io (display rotation: RibbonRight -> RibbonBottom)"
+  sed -i.bak 's/FfxDisplayRotationRibbonRight/FfxDisplayRotationRibbonBottom/g' \
+    "$hollows_io" && rm -f "$hollows_io.bak"
+fi
+
 # Pin to the latest ESP-IDF v6 line. The submodule pins on this branch
 # include the upstream v6 fixes from firefly-display, firefly-scene and
 # firefly-hollows ("Update for ESP-IDF v6", "Update BLE API for ESP-IDF
