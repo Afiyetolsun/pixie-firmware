@@ -75,6 +75,12 @@ echo
 echo "==> Flash complete"
 
 if [ "$MONITOR" = "1" ]; then
+  echo
+  echo "  +------------------------------------------------+"
+  echo "  |  Press Ctrl+]  to exit the monitor             |"
+  echo "  |  Ctrl+C is forwarded to the device, not caught |"
+  echo "  +------------------------------------------------+"
+  echo
   if command -v idf.py >/dev/null 2>&1; then
     exec idf.py -p "$PORT" monitor
   elif python3 -c 'import esp_idf_monitor' >/dev/null 2>&1; then
@@ -94,6 +100,7 @@ if [ "$MONITOR" = "1" ]; then
   elif command -v screen >/dev/null 2>&1; then
     echo "note: 'screen' won't symbolicate panic addresses; install" >&2
     echo "      esp-idf-monitor for that:  pip install esp-idf-monitor" >&2
+    echo "note: in screen, exit with Ctrl+A then K (then y)" >&2
     exec screen "$PORT" 115200
   else
     echo "warning: no monitor tool available" >&2
