@@ -6,7 +6,7 @@
 #include "panels.h"
 
 
-#include "images/image-arrow.h"
+#include "image-data.h"
 
 
 #define ITEM_COUNT      (12)
@@ -151,7 +151,7 @@ static int initFunc(FfxScene scene, FfxNode node, void *_app, void *arg) {
     }
 
     FfxNode cursor = ffx_scene_createImage(scene, image_arrow,
-      sizeof(image_arrow));
+      image_arrow_len);
     ffx_sceneGroup_appendChild(node, cursor);
     app->arrow = cursor;
 

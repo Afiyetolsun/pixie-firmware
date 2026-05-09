@@ -6,6 +6,7 @@ idf_component_register(
     "panel-connect.c"
     "panel-crawl.c"
     "panel-cyber.c"
+    "images.c"
     "panel-gifs.c"
     "panel-leds.c"
     "panel-life.c"
