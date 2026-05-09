@@ -1,7 +1,8 @@
 // LED mode picker. Drives the 4 WS2812B LEDs via firefly-hollows'
-// internal pixels API. Each mode is a PixelAnimationFunc kicked off
-// with pixels_animate(); the most recently selected mode keeps
-// running after the panel is popped.
+// internal pixels API. Each mode is a PixelAnimationFunc bound to
+// each pixel via pixels_animatePixel; the most recently selected
+// mode loops forever in the IO task and persists after the panel
+// is popped.
 
 #include <stdint.h>
 #include <stdio.h>
@@ -15,7 +16,7 @@
 #include "utils.h"
 
 
-#define MODE_COUNT      (7)
+#define MODE_COUNT      (12)
 #define LED_COUNT       (4)
 
 
@@ -23,10 +24,12 @@
 // component). Forward-declare what we need; the linker resolves to
 // the same symbols task-io.c uses.
 //
-// Note: the public-looking pixels_animate (all-pixels) and
-// pixels_stopAnimation are declared in pixels.h but not actually
-// implemented in pixels.c at this commit, so we use the per-pixel
-// pixels_animatePixel instead and pass the pixel index via `arg`.
+// Note: pixels.h declares pixels_animate and pixels_stopAnimation but
+// pixels.c at the pinned commit only implements pixels_animatePixel.
+// Animation functions write only out[0] - the pixel index travels
+// through `arg`. Pass repeat=1 so the animation loops forever
+// (repeat=0 in the implementation means one-shot, which is the
+// opposite of what the parameter name suggests).
 typedef void* PixelsContext;
 typedef void (*PixelAnimationFunc)(color_ffxt *output, size_t count,
   fixed_ffxt t, void *arg);
@@ -49,26 +52,42 @@ typedef struct LedsState {
 
 
 static const char *modeNames[MODE_COUNT] = {
-    "OFF", "CYAN", "RAINBOW", "PULSE", "STROBE", "POLICE", "MATRIX"
+    "OFF",     "CYAN",   "RAINBOW", "PULSE",
+    "STROBE",  "POLICE", "MATRIX",  "FIRE",
+    "COMET",   "OCEAN",  "NEON",    "SPARKLE"
 };
 static const char *modeDescs[MODE_COUNT] = {
     "all off",
     "solid neon cyan",
     "cycling hues",
-    "slow breathing",
+    "violet breathing",
     "1 Hz white flash",
     "alternating red/blue",
-    "green wave"
+    "green wave",
+    "red/orange flicker",
+    "yellow chaser",
+    "blue/cyan ripple",
+    "magenta/cyan/yellow",
+    "random twinkle"
 };
 static const uint32_t modeDurations[MODE_COUNT] = {
-    1000, 1000, 4000, 1800, 1000, 800, 1200
+    1000,  // OFF
+    1000,  // CYAN
+    4000,  // RAINBOW
+    1800,  // PULSE
+    1000,  // STROBE
+    800,   // POLICE
+    1200,  // MATRIX
+    400,   // FIRE
+    900,   // COMET
+    3000,  // OCEAN
+    2000,  // NEON
+    600    // SPARKLE
 };
 
 
-// Each animation writes only out[0] - pixels_animatePixel binds one
-// LED at a time, and the pixel index travels through `arg`.
-
 static int pixIndex(void *arg) { return (int)(uintptr_t)arg; }
+
 
 static void animOff(color_ffxt *out, size_t count, fixed_ffxt t, void *arg) {
     out[0] = COLOR_BLACK;
@@ -118,17 +137,77 @@ static void animMatrix(color_ffxt *out, size_t count, fixed_ffxt t,
     out[0] = ffx_color_hsv(180, MAX_SAT, v);
 }
 
+// Cheap per-pixel pseudo-random hash for organic effects.
+static uint32_t hash32(uint32_t x) {
+    x ^= x << 13;
+    x ^= x >> 17;
+    x ^= x << 5;
+    return x ? x : 0xA5C0FFEE;
+}
+
+static void animFire(color_ffxt *out, size_t count, fixed_ffxt t, void *arg) {
+    int i = pixIndex(arg);
+    uint32_t phase = (uint32_t)(t >> 11);
+    uint32_t s = hash32(phase * 31u + (uint32_t)i * 0x9E3779B9u);
+    int32_t hue = (int32_t)(s % 350);
+    int32_t v = MAX_VAL - (int32_t)(s & 0x1f);
+    if (v < 12) { v = 12; }
+    out[0] = ffx_color_hsv(hue, MAX_SAT, v);
+}
+
+static void animComet(color_ffxt *out, size_t count, fixed_ffxt t, void *arg) {
+    int i = pixIndex(arg);
+    int32_t head = scalarfx(LED_COUNT, t);
+    int32_t dist = (head - i + LED_COUNT) % LED_COUNT;
+    int32_t v;
+    switch (dist) {
+        case 0:  v = MAX_VAL; break;
+        case 1:  v = MAX_VAL / 3; break;
+        case 2:  v = MAX_VAL / 8; break;
+        default: v = 0; break;
+    }
+    out[0] = ffx_color_hsv(660, MAX_SAT, v);
+}
+
+static void animOcean(color_ffxt *out, size_t count, fixed_ffxt t, void *arg) {
+    int i = pixIndex(arg);
+    int32_t base = scalarfx(700, t) + i * 200;
+    int32_t hue = 1980 + (base % 700);
+    out[0] = ffx_color_hsv(hue, MAX_SAT, MAX_VAL - 8);
+}
+
+static void animNeon(color_ffxt *out, size_t count, fixed_ffxt t, void *arg) {
+    int i = pixIndex(arg);
+    int phase = (int)((t * 4) >> 16);
+    static const int32_t hues[4] = { 3300, 1980, 660, 1320 };
+    int32_t hue = hues[(phase + i) & 3];
+    out[0] = ffx_color_hsv(hue, MAX_SAT, MAX_VAL);
+}
+
+static void animSparkle(color_ffxt *out, size_t count, fixed_ffxt t,
+  void *arg) {
+    int i = pixIndex(arg);
+    uint32_t phase = (uint32_t)(t >> 13);
+    uint32_t s = hash32(phase * 17u + (uint32_t)i * 0x85EBCA77u);
+    bool on = (s & 0xf) < 3;
+    int32_t hue = (int32_t)(s % 3960);
+    out[0] = on ? ffx_color_hsv(hue, MAX_SAT, MAX_VAL) : COLOR_BLACK;
+}
+
+
 static const PixelAnimationFunc modeFuncs[MODE_COUNT] = {
-    animOff, animCyan, animRainbow, animPulse,
-    animStrobe, animPolice, animMatrix
+    animOff,    animCyan,   animRainbow, animPulse,
+    animStrobe, animPolice, animMatrix,  animFire,
+    animComet,  animOcean,  animNeon,    animSparkle
 };
 
 
 static void applyMode(LedsState *state) {
     PixelAnimationFunc fn = modeFuncs[state->mode];
     uint32_t dur = modeDurations[state->mode];
+    // repeat=1 means loop forever (repeat=0 is one-shot in this impl)
     for (int i = 0; i < LED_COUNT; i++) {
-        pixels_animatePixel(pixels, i, fn, dur, 0, (void*)(uintptr_t)i);
+        pixels_animatePixel(pixels, i, fn, dur, 1, (void*)(uintptr_t)i);
     }
 
     ffx_sceneLabel_setText(state->modeLabel, modeNames[state->mode]);
@@ -178,14 +257,15 @@ static int initFunc(FfxScene scene, FfxNode panel, void *_state, void *arg) {
       FfxTextAlignCenter | FfxTextAlignMiddle);
     ffx_sceneLabel_setOutlineColor(state->titleLabel, COLOR_BLACK);
 
-    int dotW = 20;
+    int dotW = 14;
     int dotH = 6;
-    int totalW = MODE_COUNT * dotW + (MODE_COUNT - 1) * 4;
+    int gap  = 4;
+    int totalW = MODE_COUNT * dotW + (MODE_COUNT - 1) * gap;
     int x0 = (240 - totalW) / 2;
     for (int i = 0; i < MODE_COUNT; i++) {
         FfxNode dot = ffx_scene_createBox(scene, ffx_size(dotW, dotH));
         ffx_sceneGroup_appendChild(panel, dot);
-        ffx_sceneNode_setPosition(dot, ffx_point(x0 + i * (dotW + 4), 56));
+        ffx_sceneNode_setPosition(dot, ffx_point(x0 + i * (dotW + gap), 56));
         state->dots[i] = dot;
     }
 
