@@ -485,7 +485,7 @@ static int initFunc(FfxScene scene, FfxNode panel, void *panelState,
     ffx_sceneLabel_setOutlineColor(s->subLabel, COLOR_BLACK);
     ffx_sceneNode_setHidden(s->subLabel, true);
 
-    feedback_addButtonLegend(panel, "L", "R", "hold=exit", "fire");
+    feedback_addButtonLegend(panel, "L", "R", "hold", "fire");
 
     startNewGame(s);
 

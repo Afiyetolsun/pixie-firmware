@@ -31,6 +31,17 @@ if [ -f "$hollows_io" ] && grep -q "FfxDisplayRotationRibbonRight" "$hollows_io"
     "$hollows_io" && rm -f "$hollows_io.bak"
 fi
 
+# Hollows draws its own FPS label at (235, 235) - the bottom-right
+# corner. We have our own FPS widget in feedback.c that can be
+# positioned per-panel; suppress hollows' overlay by parking the
+# label off-screen. The label still gets text-formatted each second
+# but is never visible.
+if [ -f "$hollows_io" ] && grep -q "ffx_point(235, 235)" "$hollows_io"; then
+  echo "==> patching $hollows_io (hide hollows built-in FPS label)"
+  sed -i.bak 's/ffx_point(235, 235)/ffx_point(-200, -200)/' \
+    "$hollows_io" && rm -f "$hollows_io.bak"
+fi
+
 # Pin to the latest ESP-IDF v6 line. The submodule pins on this branch
 # include the upstream v6 fixes from firefly-display, firefly-scene and
 # firefly-hollows ("Update for ESP-IDF v6", "Update BLE API for ESP-IDF

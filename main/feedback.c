@@ -68,11 +68,11 @@ void feedback_addButtonLegend(FfxNode panel,
     FfxScene scene = ffx_sceneNode_getScene(panel);
 
     // FfxFontSmall is ~7-8 px per glyph, so 240 px fits roughly 30
-    // characters. Format is the four button names (UP, DN, OK, X)
-    // each followed by their action verb.
+    // characters. Order matches the device's physical button row
+    // left-to-right: SW4(DOWN) SW3(UP) SW2(OK) SW1(ESC).
     char buf[48];
-    snprintf(buf, sizeof(buf), "UP:%s DN:%s OK:%s X:%s",
-      upText, downText, okText, cancelText);
+    snprintf(buf, sizeof(buf), "DOWN:%s UP:%s OK:%s ESC:%s",
+      downText, upText, okText, cancelText);
 
     FfxNode label = ffx_scene_createLabel(scene, FfxFontSmall, buf);
     ffx_sceneGroup_appendChild(panel, label);
