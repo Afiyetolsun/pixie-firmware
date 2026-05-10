@@ -12,6 +12,7 @@
 #include "firefly-hollows.h"
 #include "firefly-scene.h"
 
+#include "feedback.h"
 #include "panels.h"
 #include "utils.h"
 
@@ -209,6 +210,11 @@ static void applyMode(LedsState *state) {
     for (int i = 0; i < LED_COUNT; i++) {
         pixels_animatePixel(pixels, i, fn, dur, 1, (void*)(uintptr_t)i);
     }
+
+    // Mode 0 is OFF - re-enable button-press LED feedback in that
+    // mode only, since with any other mode running it'd just collide
+    // with the user's chosen animation.
+    feedback_setLedOffMode(state->mode == 0);
 
     ffx_sceneLabel_setText(state->modeLabel, modeNames[state->mode]);
     ffx_sceneLabel_setText(state->descLabel, modeDescs[state->mode]);

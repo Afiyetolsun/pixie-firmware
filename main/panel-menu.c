@@ -168,7 +168,7 @@ static int initFunc(FfxScene scene, FfxNode node, void *_app, void *arg) {
     layoutItems(app);
     moveArrow(app, false);
 
-    feedback_addButtonLegend(node, "up", "dn", "go", "exit");
+    feedback_addButtonLegend(node, "UP", "DOWN", "OK", "ESC");
     feedback_addFpsCounter(&app->fps, node);
 
     ffx_onEvent(FfxEventKeys, onKeys, app);

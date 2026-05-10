@@ -24,24 +24,34 @@ extern void pixels_animatePixel(PixelsContext context, uint32_t pixel,
 
 
 #define FEEDBACK_DURATION_MS    (140)
+#define FEEDBACK_PEAK           (5)   // ~10% of the original 48-step peak
+
+
+static bool ledOffMode = true;  // assume off until the LED panel says otherwise
 
 
 static void flashAnim(color_ffxt *out, size_t count, fixed_ffxt t,
   void *arg) {
-    // First half on, second half fading to off so the LED clears
-    // itself if no other animation kicks in afterward.
+    // First half holds at the (very dim) peak, second half fades to
+    // off so the LED clears itself if no other animation runs after.
     if (t < FM_1 / 2) {
-        out[0] = ffx_color_rgb(48, 48, 64);
+        out[0] = ffx_color_rgb(FEEDBACK_PEAK, FEEDBACK_PEAK,
+          FEEDBACK_PEAK + 1);
     } else {
-        // Linear fade.
-        int32_t v = scalarfx(48, FM_1 - t);
+        int32_t v = scalarfx(FEEDBACK_PEAK, FM_1 - t);
         if (v < 0) { v = 0; }
-        out[0] = ffx_color_rgb((uint8_t)v, (uint8_t)v, (uint8_t)(v + 16));
+        out[0] = ffx_color_rgb((uint8_t)v, (uint8_t)v, (uint8_t)(v + 1));
     }
 }
 
 
+void feedback_setLedOffMode(bool off) {
+    ledOffMode = off;
+}
+
+
 void feedback_onKey(FfxKeys keys) {
+    if (!ledOffMode) { return; }
     int led = -1;
     if      (keys & FfxKeyNorth)  { led = 0; }
     else if (keys & FfxKeyOk)     { led = 1; }
@@ -67,11 +77,10 @@ void feedback_addButtonLegend(FfxNode panel,
 
     FfxScene scene = ffx_sceneNode_getScene(panel);
 
-    // FfxFontSmall is ~7-8 px per glyph, so 240 px fits roughly 30
-    // characters. Order matches the device's physical button row
-    // left-to-right: SW4(DOWN) SW3(UP) SW2(OK) SW1(ESC).
+    // Just space-join the four labels in physical button order
+    // (left-to-right SW4..SW1: DOWN UP OK ESC).
     char buf[48];
-    snprintf(buf, sizeof(buf), "DOWN:%s UP:%s OK:%s ESC:%s",
+    snprintf(buf, sizeof(buf), "%s %s %s %s",
       downText, upText, okText, cancelText);
 
     FfxNode label = ffx_scene_createLabel(scene, FfxFontSmall, buf);

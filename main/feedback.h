@@ -14,19 +14,30 @@ extern "C" {
 // Brief low-brightness flash on the LED that corresponds to the
 // pressed button: North=LED0, OK=LED1, Cancel=LED2, South=LED3.
 // Safe to call from any panel's onKeys; a no-op if `keys` is 0.
+//
+// The flash only fires while the LED Mode panel's selected mode is
+// OFF (the default at boot). Once the user picks any other LED mode
+// the feedback stays out of its way; selecting OFF re-enables it.
 void feedback_onKey(FfxKeys keys);
 
 
-// Add a small bottom-of-screen legend describing what each of the
-// four buttons does in the current panel. The Pixie has only four
-// keys: UP, DN, OK, X (back). Each action label is short (a verb).
-// Pass NULL for a button with no action.
+// Tell the feedback module whether the LED Mode panel is currently
+// set to OFF. Called from panel-leds when the user picks a mode.
+void feedback_setLedOffMode(bool off);
+
+
+// Add a small bottom-of-screen legend with one short label per
+// button. Order on screen matches the device's physical button
+// row, left to right: SW4(DOWN) SW3(UP) SW2(OK) SW1(ESC).
 //
-// Example:
-//   feedback_addButtonLegend(panel, "up", "dn", "go", "exit");
+// The strings can be either button names or action verbs - the
+// helper just space-joins them. Pass NULL for an unused slot.
 //
-// Renders:
-//   UP:up  DN:dn  OK:go  X:exit
+// Examples:
+//   menu: feedback_addButtonLegend(panel, "UP", "DOWN", "OK", "ESC")
+//         -> DOWN UP OK ESC
+//   game: feedback_addButtonLegend(panel, "UP", "DOWN", "HOLD", "FIRE")
+//         -> DOWN UP HOLD FIRE
 void feedback_addButtonLegend(FfxNode panel,
   const char *upText, const char *downText,
   const char *okText, const char *cancelText);
