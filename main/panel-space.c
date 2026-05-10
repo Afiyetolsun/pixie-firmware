@@ -22,13 +22,15 @@
 #define MAX_BULLETS     (5)
 #define MAX_LEVEL       (5)
 
-#define ALIEN_W         (22)
-#define ALIEN_H         (26)
-#define ALIEN_STEP_X    (30)
-#define ALIEN_STEP_Y    (40)
+// Sprite dimensions after the 90-deg CW rotation in images.c:
+// alien is 26 wide x 20 tall, ship is 38 wide x 36 tall.
+#define ALIEN_W         (26)
+#define ALIEN_H         (20)
+#define ALIEN_STEP_X    (32)
+#define ALIEN_STEP_Y    (28)
 
-#define SHIP_W          (36)
-#define SHIP_H          (38)
+#define SHIP_W          (38)
+#define SHIP_H          (36)
 #define SHIP_BOTTOM_Y   (240 - SHIP_H - 2)
 
 #define HUD_H           (16)
@@ -161,7 +163,7 @@ static void setupLevel(SpaceState *s, int level) {
         for (int c = 0; c < s->cols; c++) {
             FfxNode alien = s->alien[alienIdx(s, c, r)];
             ffx_sceneNode_setHidden(alien, false);
-            ffx_sceneImage_setData(alien, image_alien1, image_alien1_len);
+            ffx_sceneImage_setData(alien, image_alien1_cw, image_alien1_cw_len);
             ffx_sceneNode_setPosition(alien,
               ffx_point(c * ALIEN_STEP_X, r * ALIEN_STEP_Y));
         }
@@ -255,12 +257,12 @@ static void renderPlaying(SpaceState *s) {
             if (!s->dead[toggle]) {
                 const uint16_t *current =
                   ffx_sceneImage_getData(s->alien[toggle]);
-                if (current == image_alien1) {
-                    ffx_sceneImage_setData(s->alien[toggle], image_alien2,
-                      image_alien2_len);
+                if (current == image_alien1_cw) {
+                    ffx_sceneImage_setData(s->alien[toggle], image_alien2_cw,
+                      image_alien2_cw_len);
                 } else {
-                    ffx_sceneImage_setData(s->alien[toggle], image_alien1,
-                      image_alien1_len);
+                    ffx_sceneImage_setData(s->alien[toggle], image_alien1_cw,
+                      image_alien1_cw_len);
                 }
             }
         }
@@ -429,14 +431,14 @@ static int initFunc(FfxScene scene, FfxNode panel, void *panelState,
         ffx_sceneGroup_appendChild(panel, bullet);
         ffx_sceneNode_setPosition(bullet, ffx_point(0, 280));
 
-        FfxNode boom = ffx_scene_createImage(scene, image_alienboom,
-          image_alienboom_len);
+        FfxNode boom = ffx_scene_createImage(scene, image_alienboom_cw,
+          image_alienboom_cw_len);
         s->boom[i] = boom;
         ffx_sceneGroup_appendChild(panel, boom);
         ffx_sceneNode_setPosition(boom, ffx_point(300, 0));
     }
 
-    FfxNode ship = ffx_scene_createImage(scene, image_ship, image_ship_len);
+    FfxNode ship = ffx_scene_createImage(scene, image_ship_cw, image_ship_cw_len);
     s->ship = ship;
     ffx_sceneGroup_appendChild(panel, ship);
 
@@ -445,8 +447,8 @@ static int initFunc(FfxScene scene, FfxNode panel, void *panelState,
     ffx_sceneGroup_appendChild(panel, aliens);
 
     for (int i = 0; i < MAX_ALIENS; i++) {
-        FfxNode alien = ffx_scene_createImage(scene, image_alien1,
-          image_alien1_len);
+        FfxNode alien = ffx_scene_createImage(scene, image_alien1_cw,
+          image_alien1_cw_len);
         s->alien[i] = alien;
         ffx_sceneGroup_appendChild(aliens, alien);
         ffx_sceneNode_setHidden(alien, true);

@@ -10,6 +10,7 @@
 
 #include "utils.h"
 
+#include "image-data.h"
 #include "panels.h"
 
 
@@ -34,6 +35,8 @@ void app_main() {
     vTaskSetApplicationTaskTag( NULL, (void*)NULL);
 
     FFX_LOG("GIT Commit: %s", GIT_COMMIT);
+
+    images_initRotated();
 
     ffx_init(PIXIE_FW_VERSION, ffx_demo_backgroundPixies, initPanel, NULL);
 

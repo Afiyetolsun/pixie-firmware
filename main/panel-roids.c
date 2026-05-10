@@ -17,12 +17,14 @@
 #define MAX_ROCKS       (10)
 #define MAX_BULLETS     (6)
 
-#define SHIP_W          (36)
-#define SHIP_H          (38)
+// Sprite dimensions after the 90-deg CW rotation in images.c:
+// ship is 38 wide x 36 tall, rock is 26 wide x 20 tall.
+#define SHIP_W          (38)
+#define SHIP_H          (36)
 #define SHIP_Y          (240 - SHIP_H - 2)
 
-#define ROCK_W          (22)
-#define ROCK_H          (26)
+#define ROCK_W          (26)
+#define ROCK_H          (20)
 #define BULLET_W        (10)
 #define BULLET_H        (8)
 #define BULLET_SPEED    (5)
@@ -254,8 +256,8 @@ static int initFunc(FfxScene scene, FfxNode panel, void *_state, void *arg) {
     ffx_sceneNode_setPosition(state->bg, ffx_point(0, 0));
 
     for (int i = 0; i < MAX_ROCKS; i++) {
-        FfxNode r = ffx_scene_createImage(scene, image_alienboom,
-          image_alienboom_len);
+        FfxNode r = ffx_scene_createImage(scene, image_alienboom_cw,
+          image_alienboom_cw_len);
         ffx_sceneGroup_appendChild(panel, r);
         ffx_sceneNode_setHidden(r, true);
         state->rocks[i] = r;
@@ -268,7 +270,7 @@ static int initFunc(FfxScene scene, FfxNode panel, void *_state, void *arg) {
         state->bullets[i] = b;
     }
 
-    state->ship = ffx_scene_createImage(scene, image_ship, image_ship_len);
+    state->ship = ffx_scene_createImage(scene, image_ship_cw, image_ship_cw_len);
     ffx_sceneGroup_appendChild(panel, state->ship);
 
     state->hud = ffx_scene_createBox(scene, ffx_size(240, HUD_H));

@@ -30,6 +30,22 @@ extern const size_t image_alienboom_len;
 extern const size_t image_arrow_len;
 
 
+// 90-degree clockwise-rotated copies of the directional game sprites,
+// allocated once at boot via images_initRotated(). Use these from the
+// portrait-layout games where the ship needs to face up rather than
+// left.
+extern const uint16_t *image_ship_cw;
+extern const uint16_t *image_alien1_cw;
+extern const uint16_t *image_alien2_cw;
+extern const uint16_t *image_alienboom_cw;
+extern size_t image_ship_cw_len;
+extern size_t image_alien1_cw_len;
+extern size_t image_alien2_cw_len;
+extern size_t image_alienboom_cw_len;
+
+void images_initRotated(void);
+
+
 #ifdef __cplusplus
 }
 #endif
