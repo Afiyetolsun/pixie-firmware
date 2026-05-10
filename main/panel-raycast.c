@@ -9,6 +9,7 @@
 #include "firefly-hollows.h"
 #include "firefly-scene.h"
 
+#include "feedback.h"
 #include "panels.h"
 #include "utils.h"
 
@@ -72,6 +73,7 @@ static bool blocked(float x, float y) {
 static void onKeys(FfxEvent event, FfxEventProps props, void *_state) {
     RayState *state = _state;
     state->keys = props.keys.down;
+    feedback_onKey(props.keys.down);
     if (props.keys.down & FfxKeyCancel) {
         ffx_popPanel(0);
     }

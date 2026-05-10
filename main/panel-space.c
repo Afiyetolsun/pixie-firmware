@@ -11,9 +11,10 @@
 #include "firefly-scene.h"
 #include "firefly-hollows.h"
 
+#include "feedback.h"
+#include "image-data.h"
 #include "panels.h"
 #include "utils.h"
-#include "image-data.h"
 
 
 #define MAX_COLS        (6)
@@ -387,6 +388,7 @@ static void onKeys(FfxEvent event, FfxEventProps props, void *_app) {
     SpaceState *s = _app;
     uint32_t keys = props.keys.down;
     s->keys = keys;
+    feedback_onKey(keys);
 
     if (s->state == StateGameOver || s->state == StateVictory) {
         if (keys & FfxKeyOk) { startNewGame(s); return; }
@@ -482,6 +484,8 @@ static int initFunc(FfxScene scene, FfxNode panel, void *panelState,
       FfxTextAlignCenter | FfxTextAlignMiddle);
     ffx_sceneLabel_setOutlineColor(s->subLabel, COLOR_BLACK);
     ffx_sceneNode_setHidden(s->subLabel, true);
+
+    feedback_addButtonLegend(panel, "L", "R", "HOLD=EXIT", "FIRE");
 
     startNewGame(s);
 

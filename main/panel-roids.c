@@ -9,9 +9,10 @@
 #include "firefly-hollows.h"
 #include "firefly-scene.h"
 
+#include "feedback.h"
+#include "image-data.h"
 #include "panels.h"
 #include "utils.h"
-#include "image-data.h"
 
 
 #define MAX_ROCKS       (10)
@@ -138,6 +139,7 @@ static void resetGame(RoidsState *state) {
 static void onKeys(FfxEvent event, FfxEventProps props, void *_state) {
     RoidsState *state = _state;
     state->keys = props.keys.down;
+    feedback_onKey(props.keys.down);
 
     state->okHeldAt = (props.keys.down == FfxKeyOk) ? ticks() : 0;
 
@@ -300,6 +302,8 @@ static int initFunc(FfxScene scene, FfxNode panel, void *_state, void *arg) {
       FfxTextAlignCenter | FfxTextAlignMiddle);
     ffx_sceneLabel_setOutlineColor(state->subLabel, COLOR_BLACK);
     ffx_sceneNode_setHidden(state->subLabel, true);
+
+    feedback_addButtonLegend(panel, "L", "R", "HOLD=EXIT", "FIRE");
 
     resetGame(state);
 

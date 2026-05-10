@@ -8,6 +8,7 @@
 #include "firefly-hollows.h"
 #include "firefly-scene.h"
 
+#include "feedback.h"
 #include "panels.h"
 #include "utils.h"
 
@@ -70,6 +71,7 @@ static void resetBall(BrickState *state) {
 static void onKeys(FfxEvent event, FfxEventProps props, void *_state) {
     BrickState *state = _state;
     state->keys = props.keys.down;
+    feedback_onKey(props.keys.down);
     if (props.keys.down & FfxKeyCancel) {
         ffx_popPanel(0);
         return;

@@ -11,6 +11,7 @@
 #include "firefly-hollows.h"
 #include "firefly-scene.h"
 
+#include "feedback.h"
 #include "panels.h"
 #include "utils.h"
 
@@ -105,6 +106,7 @@ static void onRender(FfxEvent event, FfxEventProps props, void *_state) {
 }
 
 static void onKeys(FfxEvent event, FfxEventProps props, void *_state) {
+    feedback_onKey(props.keys.down);
     if (props.keys.down & FfxKeyCancel) {
         ffx_popPanel(0);
     }

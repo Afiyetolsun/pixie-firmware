@@ -11,6 +11,7 @@
 #include "firefly-hollows.h"
 #include "firefly-scene.h"
 
+#include "feedback.h"
 #include "panels.h"
 #include "utils.h"
 
@@ -244,6 +245,7 @@ static void stepSnake(SnakeState *s) {
 static void onKeys(FfxEvent event, FfxEventProps props, void *_state) {
     SnakeState *s = _state;
     s->keys = props.keys.down;
+    feedback_onKey(props.keys.down);
 
     if (s->gameOver) {
         if (props.keys.down & FfxKeyOk)     { resetGame(s); return; }

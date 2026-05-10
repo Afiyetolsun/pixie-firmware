@@ -6,6 +6,7 @@
 #include "panels.h"
 
 
+#include "feedback.h"
 #include "image-data.h"
 
 
@@ -101,6 +102,7 @@ static void moveArrow(State *app, bool animated) {
 
 static void onKeys(FfxEvent event, FfxEventProps props, void *_app) {
     State *app = _app;
+    feedback_onKey(props.keys.down);
 
     switch (props.keys.down) {
         case FfxKeyOk:
@@ -159,6 +161,8 @@ static int initFunc(FfxScene scene, FfxNode node, void *_app, void *arg) {
 
     layoutItems(app);
     moveArrow(app, false);
+
+    feedback_addButtonLegend(node, "UP", "DN", "GO", "EXIT");
 
     ffx_onEvent(FfxEventKeys, onKeys, app);
 
