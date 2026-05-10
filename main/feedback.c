@@ -52,11 +52,20 @@ void feedback_setLedOffMode(bool off) {
 
 void feedback_onKey(FfxKeys keys) {
     if (!ledOffMode) { return; }
+    // LED order along the device's button row left-to-right is
+    // SW4..SW1 = DOWN UP OK ESC. The on-board LED indices that
+    // physically sit above each button are:
+    //     North (UP)     -> LED 0
+    //     OK             -> LED 1
+    //     South (DOWN)   -> LED 2
+    //     Cancel (ESC)   -> LED 3
+    // Earlier we had Cancel=2 and South=3 swapped from the actual
+    // physical layout - flipped here to match.
     int led = -1;
     if      (keys & FfxKeyNorth)  { led = 0; }
     else if (keys & FfxKeyOk)     { led = 1; }
-    else if (keys & FfxKeyCancel) { led = 2; }
-    else if (keys & FfxKeySouth)  { led = 3; }
+    else if (keys & FfxKeySouth)  { led = 2; }
+    else if (keys & FfxKeyCancel) { led = 3; }
     if (led < 0) { return; }
     // repeat=0 makes this a one-shot animation; the LED lands on the
     // animation's final color and stays there until something else

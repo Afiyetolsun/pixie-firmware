@@ -180,14 +180,8 @@ static int initFunc(FfxScene scene, FfxNode panel, void *_state, void *arg) {
     ffx_sceneGroup_appendChild(panel, state->hudBg);
     ffx_sceneNode_setPosition(state->hudBg, ffx_point(0, VIEW_H));
 
-    state->hudLabel = ffx_scene_createLabel(scene, FfxFontMedium,
-      "N:FWD  S:LEFT  OK:RIGHT  X:EXIT");
-    ffx_sceneGroup_appendChild(panel, state->hudLabel);
-    ffx_sceneNode_setPosition(state->hudLabel,
-      ffx_point(120, VIEW_H + HUD_H / 2));
-    ffx_sceneLabel_setAlign(state->hudLabel,
-      FfxTextAlignCenter | FfxTextAlignMiddle);
-    ffx_sceneLabel_setOutlineColor(state->hudLabel, COLOR_BLACK);
+    state->hudLabel = NULL;
+    feedback_addButtonLegend(panel, "FWD", "LEFT", "RIGHT", "EXIT");
 
     ffx_onEvent(FfxEventKeys, onKeys, state);
     ffx_onEvent(FfxEventRenderScene, onRender, state);

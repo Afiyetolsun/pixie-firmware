@@ -217,13 +217,8 @@ static int initFunc(FfxScene scene, FfxNode panel, void *_state, void *arg) {
       FfxTextAlignCenter | FfxTextAlignMiddle);
     ffx_sceneLabel_setOutlineColor(state->scoreLabel, COLOR_BLACK);
 
-    state->hint = ffx_scene_createLabel(scene, FfxFontMedium,
-      "N/S:PADDLE  OK:LAUNCH  X:EXIT");
-    ffx_sceneGroup_appendChild(panel, state->hint);
-    ffx_sceneNode_setPosition(state->hint, ffx_point(120, 230));
-    ffx_sceneLabel_setAlign(state->hint,
-      FfxTextAlignCenter | FfxTextAlignMiddle);
-    ffx_sceneLabel_setOutlineColor(state->hint, COLOR_BLACK);
+    state->hint = NULL;
+    feedback_addButtonLegend(panel, "UP", "DOWN", "LAUNCH", "EXIT");
 
     state->statusLabel = ffx_scene_createLabel(scene, FfxFontLargeBold,
       "GAME OVER");

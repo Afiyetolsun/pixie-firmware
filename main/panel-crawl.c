@@ -194,13 +194,8 @@ static int initFunc(FfxScene scene, FfxNode panel, void *_state, void *arg) {
     ffx_sceneBox_setColor(state->facingDot, ffx_color_rgb(255, 255, 255));
     ffx_sceneGroup_appendChild(panel, state->facingDot);
 
-    state->hint = ffx_scene_createLabel(scene, FfxFontMedium,
-      "N:LEFT  S:RIGHT  OK:STEP  X:EXIT");
-    ffx_sceneGroup_appendChild(panel, state->hint);
-    ffx_sceneNode_setPosition(state->hint, ffx_point(120, 230));
-    ffx_sceneLabel_setAlign(state->hint,
-      FfxTextAlignCenter | FfxTextAlignMiddle);
-    ffx_sceneLabel_setOutlineColor(state->hint, COLOR_BLACK);
+    state->hint = NULL;
+    feedback_addButtonLegend(panel, "LEFT", "RIGHT", "STEP", "EXIT");
 
     state->statusLabel = ffx_scene_createLabel(scene, FfxFontLargeBold,
       "ESCAPED");

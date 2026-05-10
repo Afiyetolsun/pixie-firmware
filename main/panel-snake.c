@@ -338,12 +338,7 @@ static int initFunc(FfxScene scene, FfxNode panel, void *_state, void *arg) {
     ffx_sceneLabel_setOutlineColor(s->subLabel, COLOR_BLACK);
     ffx_sceneNode_setHidden(s->subLabel, true);
 
-    FfxNode hint = ffx_scene_createLabel(scene, FfxFontMedium,
-      "N/S:UP/DN  OK:R  X:L");
-    ffx_sceneGroup_appendChild(panel, hint);
-    ffx_sceneNode_setPosition(hint, ffx_point(120, 230));
-    ffx_sceneLabel_setAlign(hint, FfxTextAlignCenter | FfxTextAlignMiddle);
-    ffx_sceneLabel_setOutlineColor(hint, COLOR_BLACK);
+    feedback_addButtonLegend(panel, "UP", "DOWN", "RIGHT", "LEFT");
 
     resetGame(s);
 
