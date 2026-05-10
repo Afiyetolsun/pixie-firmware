@@ -57,22 +57,22 @@ void feedback_onKey(FfxKeys keys) {
 
 
 void feedback_addButtonLegend(FfxNode panel,
-  const char *northText, const char *southText,
+  const char *upText, const char *downText,
   const char *okText, const char *cancelText) {
 
-    if (!northText) { northText = ""; }
-    if (!southText) { southText = ""; }
-    if (!okText)    { okText = ""; }
+    if (!upText)     { upText = ""; }
+    if (!downText)   { downText = ""; }
+    if (!okText)     { okText = ""; }
     if (!cancelText) { cancelText = ""; }
 
     FfxScene scene = ffx_sceneNode_getScene(panel);
 
-    // The 240px-wide screen fits about 25 chars of FfxFontMedium and
-    // about 32 of FfxFontSmall. Use the small font and compact tokens
-    // so the full legend is readable without clipping.
+    // FfxFontSmall is ~7-8 px per glyph, so 240 px fits roughly 30
+    // characters. Format is the four button names (UP, DN, OK, X)
+    // each followed by their action verb.
     char buf[48];
-    snprintf(buf, sizeof(buf), "<%s >%s OK:%s X:%s",
-      northText, southText, okText, cancelText);
+    snprintf(buf, sizeof(buf), "UP:%s DN:%s OK:%s X:%s",
+      upText, downText, okText, cancelText);
 
     FfxNode label = ffx_scene_createLabel(scene, FfxFontSmall, buf);
     ffx_sceneGroup_appendChild(panel, label);
@@ -80,4 +80,36 @@ void feedback_addButtonLegend(FfxNode panel,
     ffx_sceneLabel_setAlign(label,
       FfxTextAlignCenter | FfxTextAlignMiddle);
     ffx_sceneLabel_setOutlineColor(label, COLOR_BLACK);
+}
+
+
+////////////////////////////////
+// FPS counter
+
+#include "utils.h"
+
+void feedback_addFpsCounter(FpsCounter *fps, FfxNode panel) {
+    FfxScene scene = ffx_sceneNode_getScene(panel);
+    fps->label = ffx_scene_createLabel(scene, FfxFontSmall, "");
+    ffx_sceneGroup_appendChild(panel, fps->label);
+    ffx_sceneNode_setPosition(fps->label, ffx_point(4, 10));
+    ffx_sceneLabel_setAlign(fps->label,
+      FfxTextAlignLeft | FfxTextAlignMiddle);
+    ffx_sceneLabel_setOutlineColor(fps->label, COLOR_BLACK);
+    fps->windowStart = ticks();
+    fps->frames = 0;
+}
+
+void feedback_tickFps(FpsCounter *fps) {
+    if (!fps || !fps->label) { return; }
+    fps->frames++;
+    uint32_t t = ticks();
+    uint32_t window = t - fps->windowStart;
+    if (window >= 1000) {
+        uint32_t fpsValue = (fps->frames * 1000) / window;
+        ffx_sceneLabel_setTextFormat(fps->label, "%lu fps",
+          (unsigned long)fpsValue);
+        fps->windowStart = t;
+        fps->frames = 0;
+    }
 }

@@ -25,6 +25,7 @@ typedef struct State {
     FfxScene scene;
     FfxNode arrow;
     FfxNode labels[ITEM_COUNT];
+    FpsCounter fps;
 } State;
 
 
@@ -100,6 +101,11 @@ static void moveArrow(State *app, bool animated) {
     }
 }
 
+static void onRender(FfxEvent event, FfxEventProps props, void *_app) {
+    State *app = _app;
+    feedback_tickFps(&app->fps);
+}
+
 static void onKeys(FfxEvent event, FfxEventProps props, void *_app) {
     State *app = _app;
     feedback_onKey(props.keys.down);
@@ -162,10 +168,11 @@ static int initFunc(FfxScene scene, FfxNode node, void *_app, void *arg) {
     layoutItems(app);
     moveArrow(app, false);
 
-    feedback_addButtonLegend(node, "UP", "DN", "GO", "EXIT");
-    // legend renders as: <UP >DN OK:GO X:EXIT
+    feedback_addButtonLegend(node, "up", "dn", "go", "exit");
+    feedback_addFpsCounter(&app->fps, node);
 
     ffx_onEvent(FfxEventKeys, onKeys, app);
+    ffx_onEvent(FfxEventRenderScene, onRender, app);
 
     return 0;
 }

@@ -18,17 +18,33 @@ void feedback_onKey(FfxKeys keys);
 
 
 // Add a small bottom-of-screen legend describing what each of the
-// four buttons does in the current panel. Each label is short
-// (a verb or an arrow). Pass NULL for a button that has no action.
+// four buttons does in the current panel. The Pixie has only four
+// keys: UP, DN, OK, X (back). Each action label is short (a verb).
+// Pass NULL for a button with no action.
 //
 // Example:
-//   feedback_addButtonLegend(panel, "UP", "DN", "SEL", "EXIT");
+//   feedback_addButtonLegend(panel, "up", "dn", "go", "exit");
 //
 // Renders:
-//   < UP  > DN  OK SEL  X EXIT
+//   UP:up  DN:dn  OK:go  X:exit
 void feedback_addButtonLegend(FfxNode panel,
-  const char *northText, const char *southText,
+  const char *upText, const char *downText,
   const char *okText, const char *cancelText);
+
+
+// Lightweight running FPS counter pinned to the top-left of a panel.
+// Each panel that wants one keeps the FpsCounter struct in its state,
+// calls feedback_addFpsCounter() from its init function, and calls
+// feedback_tickFps() once per render frame. The label updates ~once
+// per second.
+typedef struct FpsCounter {
+    FfxNode label;
+    uint32_t windowStart;
+    uint32_t frames;
+} FpsCounter;
+
+void feedback_addFpsCounter(FpsCounter *fps, FfxNode panel);
+void feedback_tickFps(FpsCounter *fps);
 
 
 #ifdef __cplusplus
