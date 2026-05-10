@@ -163,6 +163,7 @@ static int initFunc(FfxScene scene, FfxNode node, void *_app, void *arg) {
     moveArrow(app, false);
 
     feedback_addButtonLegend(node, "UP", "DN", "GO", "EXIT");
+    // legend renders as: <UP >DN OK:GO X:EXIT
 
     ffx_onEvent(FfxEventKeys, onKeys, app);
 

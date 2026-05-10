@@ -303,7 +303,7 @@ static int initFunc(FfxScene scene, FfxNode panel, void *_state, void *arg) {
     ffx_sceneLabel_setOutlineColor(state->subLabel, COLOR_BLACK);
     ffx_sceneNode_setHidden(state->subLabel, true);
 
-    feedback_addButtonLegend(panel, "L", "R", "HOLD=EXIT", "FIRE");
+    feedback_addButtonLegend(panel, "L", "R", "HOLD=X", "FIRE");
 
     resetGame(state);
 

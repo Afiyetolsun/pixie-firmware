@@ -67,11 +67,14 @@ void feedback_addButtonLegend(FfxNode panel,
 
     FfxScene scene = ffx_sceneNode_getScene(panel);
 
-    char buf[64];
-    snprintf(buf, sizeof(buf), "< %s  > %s  OK %s  X %s",
+    // The 240px-wide screen fits about 25 chars of FfxFontMedium and
+    // about 32 of FfxFontSmall. Use the small font and compact tokens
+    // so the full legend is readable without clipping.
+    char buf[48];
+    snprintf(buf, sizeof(buf), "<%s >%s OK:%s X:%s",
       northText, southText, okText, cancelText);
 
-    FfxNode label = ffx_scene_createLabel(scene, FfxFontMedium, buf);
+    FfxNode label = ffx_scene_createLabel(scene, FfxFontSmall, buf);
     ffx_sceneGroup_appendChild(panel, label);
     ffx_sceneNode_setPosition(label, ffx_point(120, 232));
     ffx_sceneLabel_setAlign(label,
