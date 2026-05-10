@@ -5,7 +5,7 @@ cd "$(dirname "$0")"
 
 usage() {
   cat <<EOF
-Usage: $0 [-p PORT] [-b BAUD] [--monitor]
+Usage: $0 [-p PORT] [-b BAUD] [--app-only] [--monitor]
 
 Flashes build/pixie.bin to a connected Firefly Pixie. Auto-detects the
 serial port if -p is omitted; first \$ESPPORT then \$1 then a /dev/tty
@@ -13,20 +13,28 @@ scan are consulted.
 
 Options:
   -p PORT       serial port (e.g. /dev/tty.usbmodem1101)
-  -b BAUD       baud rate (default: 460800)
+  -b BAUD       baud rate (default: 921600 - the ESP32-C3's built-in
+                USB-Serial/JTAG handles this fine and is ~2x faster
+                than the more conservative 460800)
+  --app-only    only write the application image; skip the bootloader
+                and partition table. Use this when you have rebuilt
+                the app but the bootloader and partition layout
+                haven't changed - cuts about a third off the total.
   --monitor     open serial monitor after flashing
   -h, --help    show this help
 EOF
 }
 
 PORT="${ESPPORT:-}"
-BAUD="${ESPBAUD:-460800}"
+BAUD="${ESPBAUD:-921600}"
 MONITOR=0
+APP_ONLY=0
 
 while [ $# -gt 0 ]; do
   case "$1" in
     -p) PORT="$2"; shift 2 ;;
     -b) BAUD="$2"; shift 2 ;;
+    --app-only) APP_ONLY=1; shift ;;
     --monitor) MONITOR=1; shift ;;
     -h|--help) usage; exit 0 ;;
     *) echo "error: unknown argument: $1" >&2; usage >&2; exit 2 ;;
@@ -54,15 +62,27 @@ fi
 
 echo "==> Flashing $PORT @ ${BAUD}"
 
+if [ "$APP_ONLY" = "1" ]; then
+  echo "==> Flashing app only (skipping bootloader + partition table)"
+  WRITE_ARGS="0x10000 build/pixie.bin"
+else
+  WRITE_ARGS="0x0     build/bootloader/bootloader.bin \
+              0x8000  build/partition_table/partition-table.bin \
+              0x10000 build/pixie.bin"
+fi
+
 if command -v esptool.py >/dev/null 2>&1; then
+  # shellcheck disable=SC2086 # WRITE_ARGS is intentionally word-split
   esptool.py --chip esp32c3 -p "$PORT" -b "$BAUD" \
     --before default_reset --after hard_reset \
     write_flash --flash_mode dio --flash_size 16MB --flash_freq 80m \
-    0x0     build/bootloader/bootloader.bin \
-    0x8000  build/partition_table/partition-table.bin \
-    0x10000 build/pixie.bin
+    $WRITE_ARGS
 elif command -v idf.py >/dev/null 2>&1; then
-  idf.py -p "$PORT" -b "$BAUD" flash
+  if [ "$APP_ONLY" = "1" ]; then
+    idf.py -p "$PORT" -b "$BAUD" app-flash
+  else
+    idf.py -p "$PORT" -b "$BAUD" flash
+  fi
 else
   echo "error: neither esptool.py nor idf.py found in PATH" >&2
   echo "  install one of:" >&2
