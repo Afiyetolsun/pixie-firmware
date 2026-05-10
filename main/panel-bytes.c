@@ -134,11 +134,7 @@ static int initFunc(FfxScene scene, FfxNode panel, void *_state, void *arg) {
     ffx_sceneLabel_setAlign(title, FfxTextAlignCenter | FfxTextAlignMiddle);
     ffx_sceneLabel_setOutlineColor(title, COLOR_BLACK);
 
-    FfxNode hint = ffx_scene_createLabel(scene, FfxFontMedium, "[CANCEL] EXIT");
-    ffx_sceneGroup_appendChild(panel, hint);
-    ffx_sceneNode_setPosition(hint, ffx_point(120, 228));
-    ffx_sceneLabel_setAlign(hint, FfxTextAlignCenter | FfxTextAlignMiddle);
-    ffx_sceneLabel_setOutlineColor(hint, COLOR_BLACK);
+    feedback_addButtonLegend(panel, "-", "-", "-", "EXIT");
 
     ffx_onEvent(FfxEventKeys, onKeys, state);
     ffx_onEvent(FfxEventRenderScene, onRender, state);

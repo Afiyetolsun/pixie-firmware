@@ -231,12 +231,7 @@ static int initFunc(FfxScene scene, FfxNode panel, void *_state, void *arg) {
         }
     }
 
-    FfxNode hint = ffx_scene_createLabel(scene, FfxFontMedium,
-      "N/S:SEED  OK:PAUSE  X:EXIT");
-    ffx_sceneGroup_appendChild(panel, hint);
-    ffx_sceneNode_setPosition(hint, ffx_point(120, 230));
-    ffx_sceneLabel_setAlign(hint, FfxTextAlignCenter | FfxTextAlignMiddle);
-    ffx_sceneLabel_setOutlineColor(hint, ffx_color_rgb(0, 0, 0));
+    feedback_addButtonLegend(panel, "PREV", "NEXT", "PAUSE", "EXIT");
 
     applyPreset(life);
     renderBoard(life);

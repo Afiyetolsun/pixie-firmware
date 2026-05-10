@@ -170,8 +170,7 @@ static int initFunc(FfxScene scene, FfxNode panel, void *_state, void *arg) {
         state->heapHistory[i] = bar;
     }
 
-    addLabel(scene, panel, "[CANCEL] EXIT", 120, 232, FfxFontMedium,
-      FfxTextAlignCenter | FfxTextAlignMiddle);
+    feedback_addButtonLegend(panel, "-", "-", "-", "EXIT");
 
     state->nextSampleAt = state->bootTime;
 
